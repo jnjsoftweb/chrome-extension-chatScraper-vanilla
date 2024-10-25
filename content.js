@@ -14,6 +14,7 @@ console.log("컨텐츠 스크립트가 로드되었습니다!");
         checkbox.type = "checkbox";
         checkbox.className = "message-checkbox";
         checkbox.dataset.index = index;
+        checkbox.checked = true;  // 기본적으로 체크된 상태로 설정
         message.insertBefore(checkbox, message.firstChild);
         console.log("체크박스 추가됨:", index);
       }
