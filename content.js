@@ -1,6 +1,8 @@
 console.log("컨텐츠 스크립트가 로드되었습니다!");
 // 여기에 웹 페이지에서 실행될 코드를 작성합니다
 
+console.log("ChatGPT 페이지 구조:", document.body.innerHTML);
+
 function addCheckboxesToMessages() {
   const messages = document.querySelectorAll("[data-message-author-role]");
   console.log("찾은 메시지 수:", messages.length);
@@ -39,9 +41,24 @@ function getSelectedMessages() {
   checkboxes.forEach((checkbox) => {
     const message = checkbox.closest("[data-message-author-role]");
     const role = message.getAttribute("data-message-author-role");
-    const content = message.querySelector(".text-message").textContent;
+
+    // 메시지 내용을 찾는 선택자를 수정합니다.
+    let content = "내용을 찾을 수 없습니다.";
+    const contentElement = message.querySelector(".markdown");
+    if (contentElement) {
+      content = contentElement.innerText.trim();
+    } else {
+      const textElements = message.querySelectorAll(".text-base");
+      if (textElements.length > 0) {
+        content = Array.from(textElements)
+          .map((el) => el.innerText.trim())
+          .join("\n");
+      }
+    }
+
     selectedMessages.push({ role, content });
   });
+  console.log("선택된 메시지:", selectedMessages); // 디버깅을 위해 로그를 추가합니다.
   return selectedMessages;
 }
 

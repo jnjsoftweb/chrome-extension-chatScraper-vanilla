@@ -60,15 +60,20 @@ document.addEventListener("DOMContentLoaded", function () {
     saveMessagesButton.addEventListener("click", async () => {
       try {
         const response = await sendMessageToActiveTab({ action: "getSelectedMessages" });
-        if (response && response.messages) {
+        console.log("받은 응답:", response); // 디버깅을 위해 로그를 추가합니다.
+        if (response && response.messages && response.messages.length > 0) {
           const markdown = response.messages.map((msg) => `## ${msg.role}\n\n${msg.content}\n\n`).join("");
           chrome.runtime.sendMessage({
             action: "saveMarkdown",
             markdown: markdown,
           });
+        } else {
+          console.error("선택된 메시지가 없거나 응답이 올바르지 않습니다.");
+          alert("선택된 메시지가 없습니다. 메시지를 선택한 후 다시 시도해 주세요.");
         }
       } catch (error) {
         console.error("선택된 메시지 가져오기 중 오류 발생:", error);
+        alert("메시지를 가져오는 중 오류가 발생했습니다. 다시 시도해 주세요.");
       }
     });
   }
