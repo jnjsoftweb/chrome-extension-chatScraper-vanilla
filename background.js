@@ -1,21 +1,20 @@
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "saveMarkdown") {
     const markdown = request.markdown;
-    const filename = `chat_export_${new Date().toISOString().replace(/[:.]/g, "-")}.md`;
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+    const filename = `chat_export_${timestamp}.md`;
 
-    const blob = new Blob([markdown], { type: "text/markdown" });
-    const url = URL.createObjectURL(blob);
-
-    chrome.downloads.download(
-      {
-        url: url,
-        filename: filename,
-        saveAs: true,
-      },
-      () => {
-        URL.revokeObjectURL(url);
+    chrome.downloads.download({
+      url: 'data:text/markdown;charset=utf-8,' + encodeURIComponent(markdown),
+      filename: filename,
+      saveAs: true
+    }, (downloadId) => {
+      if (chrome.runtime.lastError) {
+        console.error("다운로드 중 오류 발생:", chrome.runtime.lastError);
+      } else {
+        console.log("파일이 성공적으로 다운로드되었습니다. 다운로드 ID:", downloadId);
       }
-    );
+    });
   }
 });
 

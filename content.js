@@ -61,37 +61,37 @@ console.log("컨텐츠 스크립트가 로드되었습니다!");
     return selectedMessages;
   }
 
+  function convertToMarkdown(messages) {
+    return messages.map(msg => {
+      const roleIcon = msg.role === 'assistant' ? '🤖' : '👤';
+      return `## ${roleIcon} ${msg.role.charAt(0).toUpperCase() + msg.role.slice(1)}\n\n${msg.content}\n\n`;
+    }).join('---\n\n');
+  }
+
   function registerMessageListener() {
-    let lastRequestTime = 0;
-    const DEBOUNCE_TIME = 1000; // 1000ms로 증가
-
-    let isProcessing = false;
-
     chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       console.log("메시지 수신:", request);
-      const now = Date.now();
-      if (now - lastRequestTime < DEBOUNCE_TIME || isProcessing) {
-        console.log("중복 요청 무시");
-        return true;
-      }
-      lastRequestTime = now;
-      isProcessing = true;
 
       if (request.action === "ping") {
         sendResponse({ status: "Content script is alive" });
-        isProcessing = false;
       } else if (request.action === "addCheckboxes") {
         addCheckboxesToMessages();
         sendResponse({ status: "Checkboxes added" });
-        isProcessing = false;
       } else if (request.action === "getSelectedMessages") {
         const messages = getSelectedMessages();
         console.log("선택된 메시지:", messages);
-        setTimeout(() => {
-          sendResponse({ messages: messages });
-          isProcessing = false;
-        }, 100); // 약간의 지연을 추가
+        if (messages.length > 0) {
+          const markdown = convertToMarkdown(messages);
+          chrome.runtime.sendMessage({
+            action: "saveMarkdown",
+            markdown: markdown
+          });
+          sendResponse({ status: "Markdown sent for saving" });
+        } else {
+          sendResponse({ status: "No messages selected" });
+        }
       }
+
       return true; // 비동기 응답을 위해 true 반환
     });
   }
