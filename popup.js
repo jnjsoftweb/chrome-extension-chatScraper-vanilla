@@ -69,18 +69,15 @@ document.addEventListener("DOMContentLoaded", function () {
         const response = await sendMessageToActiveTab({ action: "getSelectedMessages" });
         console.log("받은 응답:", response);
         if (response && response.status === "Markdown sent for saving") {
-          console.log("마크다운이 성공적으로 저장되었습니다.");
-          alert("선택한 메시지가 마크다운 파일로 저장되었습니다.");
+          console.log("마크다운 저장 요청이 전송되었습니다.");
+          // 백그라운드 스크립트에서 직접 다운로드를 처리하므로 추가 작업 불필요
         } else if (response && response.status === "No messages selected") {
           console.log("선택된 메시지가 없습니다.");
-          alert("선택된 메시지가 없습니다. 메시지를 선택한 후 다시 시도해 주세요.");
         } else {
           console.error("예상치 못한 응답:", response);
-          alert("예상치 못한 오류가 발생했습니다. 다시 시도해 주세요.");
         }
       } catch (error) {
         console.error("선택된 메시지 가져오기 중 오류 발생:", error.message);
-        alert("메시지를 가져오는 중 오류가 발생했습니다: " + error.message);
       }
     });
   }

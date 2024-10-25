@@ -7,14 +7,17 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     chrome.downloads.download({
       url: 'data:text/markdown;charset=utf-8,' + encodeURIComponent(markdown),
       filename: filename,
-      saveAs: true
+      saveAs: false  // 자동 저장을 위해 false로 설정
     }, (downloadId) => {
       if (chrome.runtime.lastError) {
         console.error("다운로드 중 오류 발생:", chrome.runtime.lastError);
+        sendResponse({ status: "error", message: chrome.runtime.lastError.message });
       } else {
         console.log("파일이 성공적으로 다운로드되었습니다. 다운로드 ID:", downloadId);
+        sendResponse({ status: "success", downloadId: downloadId });
       }
     });
+    return true;  // 비동기 sendResponse를 사용하기 위해 true 반환
   }
 });
 
