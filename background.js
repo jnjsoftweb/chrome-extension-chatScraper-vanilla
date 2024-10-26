@@ -1,22 +1,60 @@
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "saveMarkdown") {
-    const markdown = request.markdown;
+    const markdownOriginal = request.markdownOriginal;
+    const markdownWithCodeBlock = request.markdownWithCodeBlock;
+    const originalMessages = request.originalMessages;
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-    const filename = `chat_export_${timestamp}.md`;
+    const markdownOriginalFilename = `chat_export_markdown_original_${timestamp}.md`;
+    const markdownWithCodeBlockFilename = `chat_export_markdown_with_codeblock_${timestamp}.md`;
+    const originalFilename = `chat_export_original_${timestamp}.json`;
 
+    // 원본 마크다운 파일 저장
     chrome.downloads.download({
-      url: 'data:text/markdown;charset=utf-8,' + encodeURIComponent(markdown),
-      filename: filename,
-      saveAs: false  // 자동 저장을 위해 false로 설정
-    }, (downloadId) => {
+      url: 'data:text/markdown;charset=utf-8,' + encodeURIComponent(markdownOriginal),
+      filename: markdownOriginalFilename,
+      saveAs: false
+    }, (markdownOriginalDownloadId) => {
       if (chrome.runtime.lastError) {
-        console.error("다운로드 중 오류 발생:", chrome.runtime.lastError);
-        sendResponse({ status: "error", message: chrome.runtime.lastError.message });
+        console.error("원본 마크다운 다운로드 중 오류 발생:", chrome.runtime.lastError);
       } else {
-        console.log("파일이 성공적으로 다운로드되었습니다. 다운로드 ID:", downloadId);
-        sendResponse({ status: "success", downloadId: downloadId });
+        console.log("원본 마크다운 파일이 성공적으로 다운로드되었습니다. 다운로드 ID:", markdownOriginalDownloadId);
       }
     });
+
+    // 코드 블록이 적용된 마크다운 파일 저장
+    chrome.downloads.download({
+      url: 'data:text/markdown;charset=utf-8,' + encodeURIComponent(markdownWithCodeBlock),
+      filename: markdownWithCodeBlockFilename,
+      saveAs: false
+    }, (markdownWithCodeBlockDownloadId) => {
+      if (chrome.runtime.lastError) {
+        console.error("코드 블록 적용 마크다운 다운로드 중 오류 발생:", chrome.runtime.lastError);
+      } else {
+        console.log("코드 블록 적용 마크다운 파일이 성공적으로 다운로드되었습니다. 다운로드 ID:", markdownWithCodeBlockDownloadId);
+      }
+    });
+
+    // 원본 메시지 JSON 파일 저장
+    const originalJson = JSON.stringify(originalMessages, null, 2);
+    chrome.downloads.download({
+      url: 'data:application/json;charset=utf-8,' + encodeURIComponent(originalJson),
+      filename: originalFilename,
+      saveAs: false
+    }, (originalDownloadId) => {
+      if (chrome.runtime.lastError) {
+        console.error("원본 메시지 다운로드 중 오류 발생:", chrome.runtime.lastError);
+        sendResponse({ status: "error", message: chrome.runtime.lastError.message });
+      } else {
+        console.log("원본 메시지 파일이 성공적으로 다운로드되었습니다. 다운로드 ID:", originalDownloadId);
+        sendResponse({ 
+          status: "success", 
+          markdownOriginalDownloadId: markdownOriginalDownloadId,
+          markdownWithCodeBlockDownloadId: markdownWithCodeBlockDownloadId,
+          originalDownloadId: originalDownloadId 
+        });
+      }
+    });
+
     return true;  // 비동기 sendResponse를 사용하기 위해 true 반환
   }
 });
