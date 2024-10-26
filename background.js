@@ -1,62 +1,41 @@
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "saveMarkdown") {
-    const markdownOriginal = request.markdownOriginal;
-    const markdownWithCodeBlock = request.markdownWithCodeBlock;
     const originalMessages = request.originalMessages;
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-    const markdownOriginalFilename = `chat_export_markdown_original_${timestamp}.md`;
-    const markdownWithCodeBlockFilename = `chat_export_markdown_with_codeblock_${timestamp}.md`;
-    const originalFilename = `chat_export_original_${timestamp}.json`;
 
-    // 원본 마크다운 파일 저장
-    chrome.downloads.download({
-      url: 'data:text/markdown;charset=utf-8,' + encodeURIComponent(markdownOriginal),
-      filename: markdownOriginalFilename,
-      saveAs: false
-    }, (markdownOriginalDownloadId) => {
-      if (chrome.runtime.lastError) {
-        console.error("원본 마크다운 다운로드 중 오류 발생:", chrome.runtime.lastError);
-      } else {
-        console.log("원본 마크다운 파일이 성공적으로 다운로드되었습니다. 다운로드 ID:", markdownOriginalDownloadId);
-      }
-    });
+    if (request.saveJson) {
+      const originalFilename = `chat_export_original_${timestamp}.json`;
+      const originalJson = JSON.stringify(originalMessages, null, 2);
+      chrome.downloads.download({
+        url: "data:application/json;charset=utf-8," + encodeURIComponent(originalJson),
+        filename: originalFilename,
+        saveAs: false,
+      });
+    }
 
-    // 코드 블록이 적용된 마크다운 파일 저장
-    chrome.downloads.download({
-      url: 'data:text/markdown;charset=utf-8,' + encodeURIComponent(markdownWithCodeBlock),
-      filename: markdownWithCodeBlockFilename,
-      saveAs: false
-    }, (markdownWithCodeBlockDownloadId) => {
-      if (chrome.runtime.lastError) {
-        console.error("코드 블록 적용 마크다운 다운로드 중 오류 발생:", chrome.runtime.lastError);
-      } else {
-        console.log("코드 블록 적용 마크다운 파일이 성공적으로 다운로드되었습니다. 다운로드 ID:", markdownWithCodeBlockDownloadId);
-      }
-    });
+    if (request.saveMarkdown) {
+      const markdownOriginalFilename = `chat_export_markdown_original_${timestamp}.md`;
+      const markdownOriginal = convertToMarkdown(originalMessages);
+      chrome.downloads.download({
+        url: "data:text/markdown;charset=utf-8," + encodeURIComponent(markdownOriginal),
+        filename: markdownOriginalFilename,
+        saveAs: false,
+      });
+    }
 
-    // 원본 메시지 JSON 파일 저장
-    const originalJson = JSON.stringify(originalMessages, null, 2);
-    chrome.downloads.download({
-      url: 'data:application/json;charset=utf-8,' + encodeURIComponent(originalJson),
-      filename: originalFilename,
-      saveAs: false
-    }, (originalDownloadId) => {
-      if (chrome.runtime.lastError) {
-        console.error("원본 메시지 다운로드 중 오류 발생:", chrome.runtime.lastError);
-        sendResponse({ status: "error", message: chrome.runtime.lastError.message });
-      } else {
-        console.log("원본 메시지 파일이 성공적으로 다운로드되었습니다. 다운로드 ID:", originalDownloadId);
-        sendResponse({ 
-          status: "success", 
-          markdownOriginalDownloadId: markdownOriginalDownloadId,
-          markdownWithCodeBlockDownloadId: markdownWithCodeBlockDownloadId,
-          originalDownloadId: originalDownloadId 
-        });
-      }
-    });
+    if (request.saveMarkdownWithCodeBlock) {
+      const markdownWithCodeBlockFilename = `chat_export_markdown_with_codeblock_${timestamp}.md`;
+      const markdownWithCodeBlock = convertToMarkdownWithCodeBlock(originalMessages);
+      chrome.downloads.download({
+        url: "data:text/markdown;charset=utf-8," + encodeURIComponent(markdownWithCodeBlock),
+        filename: markdownWithCodeBlockFilename,
+        saveAs: false,
+      });
+    }
 
-    return true;  // 비동기 sendResponse를 사용하기 위해 true 반환
+    sendResponse({ status: "success" });
   }
+  return true;
 });
 
 function sendMessageToContentScript(tabId, message) {
@@ -121,3 +100,25 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
     await addCheckboxes(tabId);
   }
 });
+
+function convertToMarkdown(messages) {
+  return messages
+    .map((msg) => {
+      const roleIcon = msg.role === "assistant" ? "🤖" : "👤";
+      return `## ${roleIcon} ${msg.role.charAt(0).toUpperCase() + msg.role.slice(1)}\n\n${msg.content.trim()}\n\n`;
+    })
+    .join("---\n\n");
+}
+
+function convertToMarkdownWithCodeBlock(messages) {
+  return messages
+    .map((msg) => {
+      const roleIcon = msg.role === "assistant" ? "🤖" : "👤";
+      let content = msg.content;
+
+      // 코드 블록 변환
+      content = content.replace(/([a-zA-Z]+)[\r\n]+코드 복사[\r\n]+([\s\S]*?)(?=[\r\n]+(?:[\d]|[^/#<│├└{}\(\)\sa-zA-Z]|$))/g, "```$1\n$2\n```");
+      return `## ${roleIcon} ${msg.role.charAt(0).toUpperCase() + msg.role.slice(1)}\n\n${content.trim()}\n\n`;
+    })
+    .join("---\n\n");
+}

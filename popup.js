@@ -1,15 +1,16 @@
 document.addEventListener("DOMContentLoaded", function () {
   const checkMessagesButton = document.getElementById("checkMessages");
   const saveMessagesButton = document.getElementById("saveMessages");
+  const openOptionsButton = document.getElementById("openOptions");
 
   async function ensureContentScriptInjected() {
     return new Promise((resolve, reject) => {
-      chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
+      chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
         if (tabs.length === 0) {
           reject(new Error("No active tab found"));
           return;
         }
-        chrome.tabs.sendMessage(tabs[0].id, { action: "ping" }, function(response) {
+        chrome.tabs.sendMessage(tabs[0].id, { action: "ping" }, function (response) {
           if (chrome.runtime.lastError) {
             chrome.scripting.executeScript(
               {
@@ -35,12 +36,12 @@ document.addEventListener("DOMContentLoaded", function () {
   async function sendMessageToActiveTab(message) {
     await ensureContentScriptInjected();
     return new Promise((resolve, reject) => {
-      chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
+      chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
         if (tabs.length === 0) {
           reject(new Error("No active tab found"));
           return;
         }
-        chrome.tabs.sendMessage(tabs[0].id, message, function(response) {
+        chrome.tabs.sendMessage(tabs[0].id, message, function (response) {
           if (chrome.runtime.lastError) {
             reject(new Error(chrome.runtime.lastError.message));
           } else {
@@ -68,17 +69,26 @@ document.addEventListener("DOMContentLoaded", function () {
       try {
         const response = await sendMessageToActiveTab({ action: "getSelectedMessages" });
         console.log("받은 응답:", response);
-        if (response && response.status === "Markdown sent for saving") {
-          console.log("마크다운 저장 요청이 전송되었습니다.");
+        if (response && response.status === "Messages sent for saving") {
+          console.log("메시지 저장 요청이 전송되었습니다.");
           // 백그라운드 스크립트에서 직접 다운로드를 처리하므로 추가 작업 불필요
         } else if (response && response.status === "No messages selected") {
           console.log("선택된 메시지가 없습니다.");
+          alert("선택된 메시지가 없습니다. 메시지를 선택한 후 다시 시도해 주세요.");
         } else {
           console.error("예상치 못한 응답:", response);
+          alert("메시지 저장 중 오류가 발생했습니다.");
         }
       } catch (error) {
         console.error("선택된 메시지 가져오기 중 오류 발생:", error.message);
+        alert("메시지 가져오기 중 오류가 발생했습니다: " + error.message);
       }
+    });
+  }
+
+  if (openOptionsButton) {
+    openOptionsButton.addEventListener("click", function () {
+      chrome.runtime.openOptionsPage();
     });
   }
 });

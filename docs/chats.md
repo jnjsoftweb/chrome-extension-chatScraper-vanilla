@@ -82,3 +82,19 @@ json
 // 언어를 포함해 코드 블럭 감싸기
 const replacedText = text.replace(/([a-zA-Z]+)\n코드 복사\n([\s\S]*?)(?=\n(?:[a-zA-Z]+\n코드 복사|$))/g, "```$1\n$2\n```");
 console.log(replacedText);
+
+
+
+### 
+
+@Codebase 
+현재 크롬 익스텐션의 설정값을 크롬 브라우저에서 조정하게 할 수 있나요.
+'설정' 버튼을 누르면,
+
+"""
+- 체크 박스 디폴트: (v)true, ()false
+- 저장 파일: [v] json, [v] md, [v] 코드블럭 적용 md
+- page: [v] chatgpt.com [] claude.ai  [] copilot
+"""
+
+등과 같은 설정 화면이 뜨고, 설정을 변경하면 익스텐션의 설정값이 바뀌면서 기능이 분화되도록 하는 기능요

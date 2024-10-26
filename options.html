@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <title>설정</title>
+    <style>
+      body {
+        padding: 20px;
+        font-family: Arial, sans-serif;
+      }
+      label {
+        display: block;
+        margin-bottom: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>설정</h1>
+
+    <label> <input type="checkbox" id="defaultChecked" /> 체크박스 기본값: 체크됨 </label>
+
+    <h3>저장 파일 형식:</h3>
+    <label> <input type="checkbox" id="saveJson" /> JSON </label>
+    <label> <input type="checkbox" id="saveMarkdown" /> Markdown </label>
+    <label> <input type="checkbox" id="saveMarkdownWithCodeBlock" /> 코드블록 적용 Markdown </label>
+
+    <h3>지원 페이지:</h3>
+    <label> <input type="checkbox" id="enableChatGPT" /> chat.openai.com </label>
+    <label> <input type="checkbox" id="enableClaude" /> claude.ai </label>
+    <label> <input type="checkbox" id="enableCopilot" /> copilot.microsoft.com </label>
+
+    <button id="save">저장</button>
+
+    <script src="options.js"></script>
+  </body>
+</html>
