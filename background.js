@@ -51,28 +51,30 @@ function saveFile(filename, content, mimeType) {
   chrome.storage.sync.get({ saveFolder: "" }, function(items) {
     let saveFolder = items.saveFolder.trim();
     
-    // 사용자가 지정한 폴더가 있는 경우
-    if (saveFolder) {
-      // 모든 'downloads/' 또는 'Downloads/'를 제거
-      saveFolder = saveFolder.replace(/^(downloads|Downloads)\/?/i, '');
-      saveFolder = saveFolder.replace(/(^|\/)downloads\//gi, '$1');
-      
-      // 맨 앞과 맨 뒤의 '/'를 제거
-      saveFolder = saveFolder.replace(/^\/|\/$/g, '');
-      
-      // 폴더가 비어있지 않으면 맨 뒤에 '/' 추가
-      if (saveFolder) {
+    // 절대 경로인지 확인
+    const isAbsolutePath = /^([A-Za-z]:[\\/]|\/)/;
+    
+    let fullPath;
+    if (isAbsolutePath.test(saveFolder)) {
+      console.log("절대 경로가 감지되었습니다.");
+      saveFolder = saveFolder.replace(/\\/g, '/');  // 백슬래시를 슬래시로 변환
+      if (!saveFolder.endsWith('/')) {
         saveFolder += '/';
       }
-      
-      filename = saveFolder + filename;
+      fullPath = saveFolder + filename.replace(/^.*[\\\/]/, '');  // 파일명에서 경로 부분 제거
+    } else {
+      console.log("상대 경로가 감지되었습니다.");
+      fullPath = saveFolder ? (saveFolder + '/' + filename).replace(/^\//, '') : filename;
     }
+    
+    // 중복된 경로 제거 및 'downloads' 폴더명 제거
+    fullPath = fullPath.replace(/\/+/g, '/').replace(/^downloads\//, '');
 
-    console.log("Saving file to:", filename);  // 디버깅을 위한 로그
+    console.log("Saving file to:", fullPath);  // 디버깅을 위한 로그
 
     chrome.downloads.download({
       url: `data:${mimeType};base64,${btoa(unescape(encodeURIComponent(content)))}`,
-      filename: filename,
+      filename: fullPath,
       saveAs: false,
     }, function(downloadId) {
       if (chrome.runtime.lastError) {
