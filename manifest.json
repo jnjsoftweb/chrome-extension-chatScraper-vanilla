@@ -15,7 +15,7 @@
   "content_scripts": [
     {
       "matches": ["https://chat.openai.com/*", "https://claude.ai/*", "https://copilot.microsoft.com/*"],
-      "js": ["content.js"],
+      "js": ["site-configs.js", "content.js"],
       "css": ["content.css"]
     }
   ]

@@ -2,11 +2,19 @@ console.log("컨텐츠 스크립트가 로드되었습니다!");
 
 // 전역 변수 선언을 피하기 위해 즉시 실행 함수를 사용합니다.
 (function () {
-  console.log("ChatGPT 페이지 구조:", document.body.innerHTML);
+  const currentSite = Object.keys(siteConfigs).find(site => window.location.hostname.includes(site));
+  const config = siteConfigs[currentSite];
+
+  if (!config) {
+    console.error("지원되지 않는 사이트입니다.");
+    return;
+  }
+
+  console.log(`${config.name} 페이지가 감지되었습니다.`);
 
   function addCheckboxesToMessages() {
     chrome.storage.sync.get({ defaultChecked: true }, function (items) {
-      const messages = document.querySelectorAll("[data-message-author-role]");
+      const messages = document.querySelectorAll(config.messageSelector);
       console.log("찾은 메시지 수:", messages.length);
 
       messages.forEach((message, index) => {
@@ -40,26 +48,25 @@ console.log("컨텐츠 스크립트가 로드되었습니다!");
   }
 
   function getModel() {
-    // 여기에 페이지에서 모델 정보를 추출하는 로직을 구현합니다.
-    // 예: document.querySelector('selector-for-model-info').textContent
-    return 'unknown'; // 실제 구현에서는 이 부분을 수정해야 합니다.
+    const modelElement = document.querySelector(config.modelInfoSelector);
+    return modelElement ? modelElement.textContent.trim() : 'unknown';
   }
 
   function getSelectedMessages() {
     const selectedMessages = [];
     const checkboxes = document.querySelectorAll(".message-checkbox:checked");
     checkboxes.forEach((checkbox) => {
-      const message = checkbox.closest("[data-message-author-role]");
-      const role = message.getAttribute("data-message-author-role");
+      const message = checkbox.closest(config.messageSelector);
+      const role = message.getAttribute("data-message-author-role") || "unknown";
 
       let content = "";
-      const contentElement = message.querySelector(".whitespace-pre-wrap");
+      const contentElement = message.querySelector(config.contentSelector);
       if (contentElement) {
         content = contentElement.innerText.trim();
       } else {
-        const markdownElement = message.querySelector(".markdown");
-        if (markdownElement) {
-          content = markdownElement.innerText.trim();
+        const alternativeElement = message.querySelector(config.alternativeContentSelector);
+        if (alternativeElement) {
+          content = alternativeElement.innerText.trim();
         } else {
           content = "내용을 찾을 수 없습니다.";
         }
