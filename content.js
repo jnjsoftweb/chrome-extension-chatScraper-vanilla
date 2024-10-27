@@ -39,6 +39,12 @@ console.log("컨텐츠 스크립트가 로드되었습니다!");
     observer.observe(targetNode, config);
   }
 
+  function getModel() {
+    // 여기에 페이지에서 모델 정보를 추출하는 로직을 구현합니다.
+    // 예: document.querySelector('selector-for-model-info').textContent
+    return 'unknown'; // 실제 구현에서는 이 부분을 수정해야 합니다.
+  }
+
   function getSelectedMessages() {
     const selectedMessages = [];
     const checkboxes = document.querySelectorAll(".message-checkbox:checked");
@@ -61,7 +67,7 @@ console.log("컨텐츠 스크립트가 로드되었습니다!");
 
       selectedMessages.push({ role, content });
     });
-    return selectedMessages;
+    return { messages: selectedMessages, model: getModel() };
   }
 
   function convertToMarkdown(messages) {
@@ -96,25 +102,14 @@ console.log("컨텐츠 스크립트가 로드되었습니다!");
         addCheckboxesToMessages();
         sendResponse({ status: "Checkboxes added" });
       } else if (request.action === "getSelectedMessages") {
-        const messages = getSelectedMessages();
-        console.log("선택된 메시지:", messages);
-        if (messages.length > 0) {
-          chrome.storage.sync.get(
-            {
-              saveJson: true,
-              saveMarkdown: true,
-              saveMarkdownWithCodeBlock: true,
-            },
-            function (items) {
-              chrome.runtime.sendMessage({
-                action: "saveMarkdown",
-                originalMessages: messages,
-                saveJson: items.saveJson,
-                saveMarkdown: items.saveMarkdown,
-                saveMarkdownWithCodeBlock: items.saveMarkdownWithCodeBlock,
-              });
-            }
-          );
+        const result = getSelectedMessages();
+        console.log("선택된 메시지:", result.messages);
+        if (result.messages.length > 0) {
+          chrome.runtime.sendMessage({
+            action: "saveMarkdown",
+            originalMessages: result.messages,
+            model: result.model
+          });
           sendResponse({ status: "Messages sent for saving" });
         } else {
           sendResponse({ status: "No messages selected" });

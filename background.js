@@ -1,4 +1,6 @@
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  console.log("Received message:", request);  // 디버깅 로그 추가
+
   if (request.action === "chooseFolder") {
     chrome.fileSystem.chooseEntry({ type: 'openDirectory' }, function(folderEntry) {
       if (chrome.runtime.lastError) {
@@ -18,71 +20,56 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   }
   if (request.action === "saveMarkdown") {
     const originalMessages = request.originalMessages;
-    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+    const timestamp = new Date().toISOString();
+    const url = sender.tab ? sender.tab.url : '';
+    const ai = getAIType(url);
+    const model = request.model || '';
 
-    chrome.storage.sync.get({ saveFolder: "" }, function(items) {
+    console.log("Preparing to save files...");  // 디버깅 로그 추가
+
+    chrome.storage.sync.get({ saveFolder: "", saveJson: true, saveMarkdown: true, saveMarkdownWithCodeBlock: true }, function(items) {
       const saveFolder = items.saveFolder;
 
-      if (request.saveJson) {
-        const originalFilename = `${saveFolder}chat_export_original_${timestamp}.json`;
+      console.log("Storage settings:", items);  // 디버깅 로그 추가
+
+      if (items.saveJson) {
+        const originalFilename = `${saveFolder}chat_export_original_${timestamp.replace(/[:.]/g, "-")}.json`;
         const originalJson = JSON.stringify(originalMessages, null, 2);
         saveFile(originalFilename, originalJson, "application/json");
       }
 
-      if (request.saveMarkdown) {
-        const markdownOriginalFilename = `${saveFolder}chat_export_markdown_original_${timestamp}.md`;
-        const markdownOriginal = convertToMarkdown(originalMessages);
+      if (items.saveMarkdown) {
+        const markdownOriginalFilename = `${saveFolder}chat_export_markdown_original_${timestamp.replace(/[:.]/g, "-")}.md`;
+        const markdownOriginal = convertToMarkdown(originalMessages, url, ai, model, timestamp);
         saveFile(markdownOriginalFilename, markdownOriginal, "text/markdown");
       }
 
-      if (request.saveMarkdownWithCodeBlock) {
-        const markdownWithCodeBlockFilename = `${saveFolder}chat_export_markdown_with_codeblock_${timestamp}.md`;
-        const markdownWithCodeBlock = convertToMarkdownWithCodeBlock(originalMessages);
+      if (items.saveMarkdownWithCodeBlock) {
+        const markdownWithCodeBlockFilename = `${saveFolder}chat_export_markdown_with_codeblock_${timestamp.replace(/[:.]/g, "-")}.md`;
+        const markdownWithCodeBlock = convertToMarkdownWithCodeBlock(originalMessages, url, ai, model, timestamp);
         saveFile(markdownWithCodeBlockFilename, markdownWithCodeBlock, "text/markdown");
       }
 
       sendResponse({ status: "success" });
     });
+
+    return true;  // 비동기 응답을 위해 true 반환
   }
-  return true;
 });
 
 function saveFile(filename, content, mimeType) {
-  chrome.storage.sync.get({ saveFolder: "" }, function(items) {
-    let saveFolder = items.saveFolder.trim();
-    
-    // 절대 경로인지 확인
-    const isAbsolutePath = /^([A-Za-z]:[\\/]|\/)/;
-    
-    let fullPath;
-    if (isAbsolutePath.test(saveFolder)) {
-      console.log("절대 경로가 감지되었습니다.");
-      saveFolder = saveFolder.replace(/\\/g, '/');  // 백슬래시를 슬래시로 변환
-      if (!saveFolder.endsWith('/')) {
-        saveFolder += '/';
-      }
-      fullPath = saveFolder + filename.replace(/^.*[\\\/]/, '');  // 파일명에서 경로 부분 제거
+  console.log("Saving file:", filename);  // 디버깅 로그 추가
+
+  chrome.downloads.download({
+    url: `data:${mimeType};base64,${btoa(unescape(encodeURIComponent(content)))}`,
+    filename: filename,
+    saveAs: false,
+  }, function(downloadId) {
+    if (chrome.runtime.lastError) {
+      console.error("Download failed:", chrome.runtime.lastError);
     } else {
-      console.log("상대 경로가 감지되었습니다.");
-      fullPath = saveFolder ? (saveFolder + '/' + filename).replace(/^\//, '') : filename;
+      console.log("File saved successfully. Download ID:", downloadId);
     }
-    
-    // 중복된 경로 제거 및 'downloads' 폴더명 제거
-    fullPath = fullPath.replace(/\/+/g, '/').replace(/^downloads\//, '');
-
-    console.log("Saving file to:", fullPath);  // 디버깅을 위한 로그
-
-    chrome.downloads.download({
-      url: `data:${mimeType};base64,${btoa(unescape(encodeURIComponent(content)))}`,
-      filename: fullPath,
-      saveAs: false,
-    }, function(downloadId) {
-      if (chrome.runtime.lastError) {
-        console.error("Download failed:", chrome.runtime.lastError);
-      } else {
-        console.log("File saved successfully. Download ID:", downloadId);
-      }
-    });
   });
 }
 
@@ -149,17 +136,46 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   }
 });
 
-function convertToMarkdown(messages) {
-  return messages
+function getAIType(url) {
+  if (url.includes('chat.openai.com')) return 'chatgpt';
+  if (url.includes('claude.ai')) return 'claude.ai';
+  if (url.includes('copilot.microsoft.com')) return 'copilot';
+  return 'unknown';
+}
+
+function convertToMarkdown(messages, url, ai, model, timestamp) {
+  const frontmatter = `---
+title: Chat Export
+url: ${url}
+ai: ${ai}
+model: ${model}
+createdAt: ${timestamp}
+---
+
+`;
+
+  const content = messages
     .map((msg) => {
       const roleIcon = msg.role === "assistant" ? "🤖" : "👤";
       return `## ${roleIcon} ${msg.role.charAt(0).toUpperCase() + msg.role.slice(1)}\n\n${msg.content.trim()}\n\n`;
     })
     .join("---\n\n");
+
+  return frontmatter + content;
 }
 
-function convertToMarkdownWithCodeBlock(messages) {
-  return messages
+function convertToMarkdownWithCodeBlock(messages, url, ai, model, timestamp) {
+  const frontmatter = `---
+title: Chat Export
+url: ${url}
+ai: ${ai}
+model: ${model}
+createdAt: ${timestamp}
+---
+
+`;
+
+  const content = messages
     .map((msg) => {
       const roleIcon = msg.role === "assistant" ? "🤖" : "👤";
       let content = msg.content;
@@ -169,4 +185,6 @@ function convertToMarkdownWithCodeBlock(messages) {
       return `## ${roleIcon} ${msg.role.charAt(0).toUpperCase() + msg.role.slice(1)}\n\n${content.trim()}\n\n`;
     })
     .join("---\n\n");
+
+  return frontmatter + content;
 }
